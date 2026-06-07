@@ -1,0 +1,905 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Engineer Market Value Scorecard</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-slate-100 text-slate-900">
+  <main class="min-h-screen px-4 py-8 sm:px-6 lg:px-8" x-data="candidateScorecard()">
+    <div class="mx-auto max-w-5xl">
+      <header class="mb-6">
+        <p class="text-sm font-semibold uppercase tracking-wide text-slate-500">Engineer Market Value Scorecard</p>
+        <h1 class="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">Candidate Value Score</h1>
+      </header>
+
+      <section class="rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div class="border-b border-slate-200 p-5 sm:p-6">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p class="text-sm font-medium text-slate-500" x-text="`Step ${currentStep} of ${steps.length}`"></p>
+              <h2 class="mt-1 text-2xl font-semibold text-slate-950" x-text="currentStepData.title"></h2>
+              <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-600" x-text="currentStepData.description"></p>
+            </div>
+            <div class="text-sm font-semibold text-slate-700" x-show="currentStep > 1 && currentStep < 8">
+              <span x-text="currentStepData.scoreLabel"></span>
+              <span x-text="`${currentSectionScore}/100`"></span>
+            </div>
+          </div>
+          <div class="mt-5 h-2 overflow-hidden rounded-full bg-slate-200">
+            <div class="h-full rounded-full bg-emerald-600" :style="`width: ${(currentStep / steps.length) * 100}%`"></div>
+          </div>
+        </div>
+
+        <div class="p-5 sm:p-6">
+          <form x-show="currentStep === 1" @submit.prevent="nextStep" class="space-y-5">
+            <div class="grid gap-5 md:grid-cols-2">
+              <label class="block">
+                <span class="text-sm font-medium text-slate-700">Full Name <span class="text-red-600">*</span></span>
+                <input type="text" x-model.trim="identity.name" class="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100">
+              </label>
+              <label class="block">
+                <span class="text-sm font-medium text-slate-700">Email</span>
+                <input type="email" x-model.trim="identity.email" class="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100">
+              </label>
+              <label class="block">
+                <span class="text-sm font-medium text-slate-700">Target Role <span class="text-red-600">*</span></span>
+                <select x-model="identity.targetRole" class="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100">
+                  <option value="">Select a role</option>
+                  <template x-for="option in targetRoles" :key="option">
+                    <option :value="option" x-text="option"></option>
+                  </template>
+                </select>
+              </label>
+              <label class="block">
+                <span class="text-sm font-medium text-slate-700">Target Level <span class="text-red-600">*</span></span>
+                <select x-model="identity.targetLevel" class="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100">
+                  <option value="">Select a level</option>
+                  <template x-for="option in targetLevels" :key="option">
+                    <option :value="option" x-text="option"></option>
+                  </template>
+                </select>
+              </label>
+            </div>
+
+            <div>
+              <p class="text-sm font-medium text-slate-700">Target Market</p>
+              <div class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                <template x-for="option in targetMarkets" :key="option">
+                  <label class="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm">
+                    <input type="checkbox" :value="option" x-model="identity.targetMarket" class="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-600">
+                    <span x-text="option"></span>
+                  </label>
+                </template>
+              </div>
+            </div>
+
+            <label class="block">
+              <span class="text-sm font-medium text-slate-700">Candidate Positioning Statement</span>
+              <textarea x-model.trim="identity.positioning" rows="3" placeholder="Describe yourself in one sentence as a software engineer." class="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"></textarea>
+              <span class="mt-1 block text-xs text-slate-500">Example: Backend engineer focused on scalable APIs, cloud infrastructure, and payment systems.</span>
+            </label>
+
+            <p x-show="identityError" class="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700" x-text="identityError"></p>
+          </form>
+
+          <template x-if="currentStep >= 2 && currentStep <= 6">
+            <div class="space-y-5">
+              <template x-for="question in currentQuestions" :key="question.id">
+                <fieldset class="rounded-lg border border-slate-200 p-4">
+                  <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <legend class="font-semibold text-slate-950" x-text="question.label"></legend>
+                      <p class="mt-1 text-sm text-slate-600" x-text="question.note"></p>
+                    </div>
+                    <span class="mt-2 shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 sm:mt-0" x-text="`${question.area} · ${question.maxPoints} pts`"></span>
+                  </div>
+                  <div class="mt-4 grid gap-2">
+                    <template x-for="option in question.options" :key="`${question.id}-${option.value}`">
+                      <label class="flex cursor-pointer items-center justify-between gap-3 rounded-md border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50">
+                        <span class="flex items-center gap-2">
+                          <input type="radio" :name="question.id" :value="option.value" x-model.number="currentSectionState[question.id]" class="h-4 w-4 border-slate-300 text-emerald-600 focus:ring-emerald-600">
+                          <span x-text="option.label"></span>
+                        </span>
+                        <span class="font-medium text-slate-600" x-text="`${option.value} pts`"></span>
+                      </label>
+                    </template>
+                  </div>
+                </fieldset>
+              </template>
+            </div>
+          </template>
+
+          <template x-if="currentStep === 7">
+            <div class="space-y-4">
+              <template x-for="question in readinessQuestions" :key="question.id">
+                <div class="rounded-lg border border-slate-200 p-4">
+                  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h3 class="font-semibold text-slate-950" x-text="question.label"></h3>
+                      <p class="mt-1 text-sm text-slate-600" x-text="question.note"></p>
+                    </div>
+                    <div class="flex rounded-md border border-slate-300 p-1">
+                      <button type="button" @click="readiness[question.id] = true" class="min-w-16 rounded px-3 py-1.5 text-sm font-medium" :class="readiness[question.id] ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:bg-slate-100'">Yes</button>
+                      <button type="button" @click="readiness[question.id] = false" class="min-w-16 rounded px-3 py-1.5 text-sm font-medium" :class="!readiness[question.id] ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-slate-100'">No</button>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </template>
+
+          <template x-if="currentStep === 8">
+            <div class="space-y-6">
+              <div class="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+                <div class="rounded-lg border border-slate-200 bg-slate-50 p-5">
+                  <p class="text-sm font-medium text-slate-500">Candidate Report</p>
+                  <h3 class="mt-1 text-2xl font-bold text-slate-950" x-text="identity.name || 'Candidate'"></h3>
+                  <div class="mt-4 grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
+                    <p x-show="identity.email"><span class="font-semibold">Email:</span> <span x-text="identity.email"></span></p>
+                    <p><span class="font-semibold">Target role:</span> <span x-text="identity.targetRole"></span></p>
+                    <p><span class="font-semibold">Target level:</span> <span x-text="identity.targetLevel"></span></p>
+                    <p><span class="font-semibold">Target market:</span> <span x-text="targetMarketDisplay"></span></p>
+                  </div>
+                  <p x-show="identity.positioning" class="mt-4 rounded-md bg-white p-3 text-sm text-slate-700" x-text="identity.positioning"></p>
+                </div>
+                <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-5">
+                  <p class="text-sm font-medium text-emerald-800">Final Candidate Value Score</p>
+                  <div class="mt-2 flex items-end gap-2">
+                    <span class="text-5xl font-bold text-emerald-950" x-text="finalScore"></span>
+                    <span class="pb-2 text-lg font-semibold text-emerald-800">/100</span>
+                  </div>
+                  <h3 class="mt-4 text-xl font-semibold text-emerald-950" x-text="tier"></h3>
+                  <p class="mt-2 text-sm leading-6 text-emerald-900" x-text="tierDescription"></p>
+                </div>
+              </div>
+
+              <div class="grid gap-4 md:grid-cols-2">
+                <div class="rounded-lg border border-slate-200 p-4">
+                  <p class="text-sm font-medium text-slate-500">Strongest Pillar</p>
+                  <h3 class="mt-1 text-lg font-semibold text-slate-950" x-text="`${strongestPillar.name} (${strongestPillar.score}/100)`"></h3>
+                </div>
+                <div class="rounded-lg border border-slate-200 p-4">
+                  <p class="text-sm font-medium text-slate-500">Weakest Pillar</p>
+                  <h3 class="mt-1 text-lg font-semibold text-slate-950" x-text="`${weakestPillar.name} (${weakestPillar.score}/100)`"></h3>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="text-lg font-semibold text-slate-950">Pillar Score Breakdown</h3>
+                <div class="mt-4 space-y-4">
+                  <template x-for="pillar in pillarBreakdown" :key="pillar.key">
+                    <div class="rounded-lg border border-slate-200 p-4">
+                      <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <h4 class="font-semibold text-slate-950" x-text="pillar.name"></h4>
+                          <p class="mt-1 text-sm text-slate-600" x-text="interpretScore(pillar.score)"></p>
+                        </div>
+                        <div class="text-sm text-slate-700 sm:text-right">
+                          <p><span class="font-semibold">Raw:</span> <span x-text="`${pillar.score}/100`"></span></p>
+                          <p><span class="font-semibold">Weight:</span> <span x-text="`${Math.round(pillar.weight * 100)}%`"></span></p>
+                          <p><span class="font-semibold">Contribution:</span> <span x-text="`${formatContribution(pillar.contribution)} points`"></span></p>
+                        </div>
+                      </div>
+                      <div class="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
+                        <div class="h-full rounded-full bg-emerald-600" :style="`width: ${pillar.score}%`"></div>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <div class="rounded-lg border border-amber-200 bg-amber-50 p-5">
+                <p class="text-sm font-medium text-amber-800">Recommended 30-day action plan</p>
+                <p class="mt-2 text-sm leading-6 text-amber-950" x-text="recommendation"></p>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <div class="flex items-center justify-between border-t border-slate-200 p-5 sm:p-6">
+          <button type="button" @click="previousStep" :disabled="currentStep === 1" class="rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40">Back</button>
+          <button type="button" x-show="currentStep < steps.length" @click="nextStep" class="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Next</button>
+          <button type="button" x-show="currentStep === steps.length" @click="currentStep = 1" class="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Review Answers</button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    function candidateScorecard() {
+      return {
+        currentStep: 1,
+        identityError: '',
+
+        steps: [
+          { title: 'Candidate Identity', description: 'Personalize the final report with your target role, level, market, and positioning.' },
+          { title: 'Technical Value Score', description: 'Measures actual ability and proof of engineering competence.', section: 'technical', scoreLabel: 'Technical Value:' },
+          { title: 'Interview Readiness Score', description: 'Measures your ability to pass actual hiring processes.', section: 'interview', scoreLabel: 'Interview Readiness:' },
+          { title: 'Branding Score', description: 'Measures how clearly and professionally you are packaged.', section: 'branding', scoreLabel: 'Branding:' },
+          { title: 'Referral / Recommendation Score', description: 'Measures access to people who can help you reach opportunities.', section: 'referral', scoreLabel: 'Referral / Recommendation:' },
+          { title: 'PR / Visibility Score', description: 'Measures external exposure and third-party credibility.', section: 'pr', scoreLabel: 'PR / Visibility:' },
+          { title: 'Professional Readiness Score', description: 'Measures practical readiness, professional presentation, and opportunity preparedness.', section: 'readiness', scoreLabel: 'Professional Readiness:' },
+          { title: 'Results', description: 'Review your final weighted Candidate Value Score and 30-day recommendation.' }
+        ],
+
+        identity: {
+          name: '',
+          email: '',
+          targetRole: '',
+          targetLevel: '',
+          targetMarket: [],
+          positioning: ''
+        },
+
+        technical: {
+          productionProjects: 0,
+          realUsers: 0,
+          measurableImpact: 0,
+          openSourceGsoc: 0,
+          technicalDepth: 0,
+          certificationsAcademics: 0
+        },
+
+        interview: {
+          dsaLeetcode: 0,
+          systemDesign: 0,
+          mockInterviews: 0,
+          technicalCommunication: 0,
+          problemCount: 0
+        },
+
+        branding: {
+          linkedin: 0,
+          resume: 0,
+          portfolioWebsite: 0,
+          githubPresentation: 0,
+          positioningClarity: 0
+        },
+
+        referral: {
+          targetCompanyConnections: 0,
+          referralReadiness: 0,
+          recommendations: 0,
+          communityStrength: 0
+        },
+
+        pr: {
+          technicalContent: 0,
+          thirdPartyFeatures: 0,
+          speakingInterviews: 0,
+          communityRecognition: 0,
+          searchVisibility: 0
+        },
+
+        readiness: {
+          interviewSetup: false,
+          selfIntroduction: false,
+          headshot: false,
+          salaryRange: false,
+          mobilityAuthorization: false,
+          recruiterContact: false,
+          targetCompanyList: false
+        },
+
+        weights: {
+          technicalValue: 0.25,
+          interviewReadiness: 0.20,
+          branding: 0.15,
+          referralRecommendation: 0.15,
+          prVisibility: 0.10,
+          professionalReadiness: 0.15
+        },
+
+        targetRoles: [
+          'Backend Engineer',
+          'Frontend Engineer',
+          'Full Stack Engineer',
+          'DevOps / Cloud Engineer',
+          'Data Engineer',
+          'AI / ML Engineer',
+          'Mobile Engineer',
+          'Cybersecurity Engineer',
+          'Product Engineer',
+          'Software Engineering Intern',
+          'Not Sure Yet'
+        ],
+
+        targetLevels: [
+          'Internship',
+          'Entry-Level',
+          'Mid-Level',
+          'Senior',
+          'Staff / Principal',
+          'Not Sure Yet'
+        ],
+
+        targetMarkets: [
+          'FAANG',
+          'Fortune 500',
+          'AI Startups',
+          'Fintech',
+          'Healthtech',
+          'Enterprise SaaS',
+          'Government / Defense',
+          'Remote Global Companies',
+          'Not Sure Yet'
+        ],
+
+        questions: {
+          technical: [
+            {
+              id: 'productionProjects',
+              label: 'How many production-level projects have you built?',
+              area: 'Production projects',
+              maxPoints: 20,
+              note: 'A production-level project is not just a tutorial or classroom exercise. It should be deployable, usable, documented, and close to a real-world product, tool, feature, or system.',
+              options: [
+                { label: '0 projects', value: 0 },
+                { label: '1 project', value: 5 },
+                { label: '2–3 projects', value: 10 },
+                { label: '4–5 projects', value: 15 },
+                { label: '6+ projects', value: 20 }
+              ]
+            },
+            {
+              id: 'realUsers',
+              label: 'Have any of your projects been used by real users?',
+              area: 'Real users / deployment',
+              maxPoints: 20,
+              note: 'Real users prove that the candidate has built something beyond private practice. This includes customers, internal teams, classmates, open-source users, startup users, client users, or public users.',
+              options: [
+                { label: 'No real users', value: 0 },
+                { label: 'A few users', value: 5 },
+                { label: '100+ users', value: 10 },
+                { label: '1,000+ users', value: 15 },
+                { label: '10,000+ users', value: 20 }
+              ]
+            },
+            {
+              id: 'measurableImpact',
+              label: 'Do you have measurable impact from your work?',
+              area: 'Measurable impact',
+              maxPoints: 20,
+              note: 'Measurable impact can include improved speed, reduced load time, increased revenue, user growth, reduced infrastructure cost, automation, improved uptime, fewer errors, or improved team workflow.',
+              options: [
+                { label: 'No measurable impact', value: 0 },
+                { label: 'Some claims, but no numbers', value: 5 },
+                { label: 'At least one measurable result', value: 10 },
+                { label: 'Multiple measurable results', value: 15 },
+                { label: 'Strong metrics tied to business or engineering outcomes', value: 20 }
+              ]
+            },
+            {
+              id: 'openSourceGsoc',
+              label: 'Have you contributed to open source or participated in GSOC-style programs?',
+              area: 'Open source / GSOC',
+              maxPoints: 15,
+              note: 'This includes open-source contributions, Google Summer of Code, hackathons, research labs, internships, engineering fellowships, or other structured engineering programs. These signals show collaboration, discipline, public proof, and external validation.',
+              options: [
+                { label: 'No', value: 0 },
+                { label: 'Minor contribution or participation', value: 4 },
+                { label: 'Several contributions or completed participation', value: 8 },
+                { label: 'Regular contributor or strong program completion', value: 12 },
+                { label: 'Maintainer, winner, recognized contributor, or published participant', value: 15 }
+              ]
+            },
+            {
+              id: 'technicalDepth',
+              label: 'Can you clearly explain the technical architecture, tradeoffs, and complexity behind your strongest projects?',
+              area: 'Technical depth',
+              maxPoints: 15,
+              note: 'Technical depth measures whether the candidate can explain architecture, tradeoffs, scalability, debugging, performance, security, data modeling, infrastructure, and why certain engineering decisions were made.',
+              options: [
+                { label: 'Weak technical depth', value: 0 },
+                { label: 'Basic understanding', value: 4 },
+                { label: 'Can explain common implementation decisions', value: 8 },
+                { label: 'Can explain architecture and tradeoffs clearly', value: 12 },
+                { label: 'Strong senior-level technical reasoning', value: 15 }
+              ]
+            },
+            {
+              id: 'certificationsAcademics',
+              label: 'Do you have technical certifications, degrees, diplomas, or academic credentials?',
+              area: 'Certifications / academics',
+              maxPoints: 10,
+              note: 'Certifications and academics do not replace real engineering ability, but they improve credibility and perceived value. This can include degrees, diplomas, bootcamps, technical certificates, cloud certifications, security certifications, AI/data certifications, or relevant coursework.',
+              options: [
+                { label: 'None', value: 0 },
+                { label: 'Basic online certificates', value: 2 },
+                { label: 'Degree, diploma, bootcamp, or one respected certification', value: 5 },
+                { label: 'Multiple respected credentials', value: 8 },
+                { label: 'Credentials strongly aligned with target role', value: 10 }
+              ]
+            }
+          ],
+
+          interview: [
+            {
+              id: 'dsaLeetcode',
+              label: 'How consistent is your LeetCode / DSA practice?',
+              area: 'DSA / LeetCode',
+              maxPoints: 25,
+              note: 'For FAANG-style and elite technology interviews, algorithmic problem solving is still a major filter. This question measures consistency, not just talent.',
+              options: [
+                { label: 'No practice', value: 0 },
+                { label: 'Occasional practice', value: 6 },
+                { label: 'Weekly practice', value: 12 },
+                { label: 'Several times per week', value: 18 },
+                { label: 'Structured, consistent practice with strong topic coverage', value: 25 }
+              ]
+            },
+            {
+              id: 'systemDesign',
+              label: 'Have you practiced system design?',
+              area: 'System design',
+              maxPoints: 25,
+              note: 'System design measures the ability to reason about scalable architecture, databases, APIs, caching, queues, reliability, performance, and tradeoffs. It is especially important for mid-level, senior, and backend/platform roles.',
+              options: [
+                { label: 'No system design practice', value: 0 },
+                { label: 'Watched videos only', value: 6 },
+                { label: 'Practiced basic designs', value: 12 },
+                { label: 'Can design common systems', value: 18 },
+                { label: 'Can explain senior-level tradeoffs clearly', value: 25 }
+              ]
+            },
+            {
+              id: 'mockInterviews',
+              label: 'Have you done mock interviews or interview simulations?',
+              area: 'Mock interviews',
+              maxPoints: 20,
+              note: 'Interview simulation helps candidates practice communication, timing, pressure, and structured thinking. Many candidates know the topic but fail under interview conditions.',
+              options: [
+                { label: 'None', value: 0 },
+                { label: '1–2 mock interviews', value: 5 },
+                { label: '3–5 mock interviews', value: 10 },
+                { label: '6–10 mock interviews', value: 15 },
+                { label: '10+ mock interviews with feedback and improvement', value: 20 }
+              ]
+            },
+            {
+              id: 'technicalCommunication',
+              label: 'Can you explain your solutions clearly out loud?',
+              area: 'Technical communication under pressure',
+              maxPoints: 15,
+              note: 'This measures whether the candidate can think out loud, explain tradeoffs, clarify assumptions, respond to feedback, and communicate while solving problems.',
+              options: [
+                { label: 'No', value: 0 },
+                { label: 'Weak', value: 4 },
+                { label: 'Average', value: 8 },
+                { label: 'Good', value: 12 },
+                { label: 'Excellent', value: 15 }
+              ]
+            },
+            {
+              id: 'problemCount',
+              label: 'How many interview-style coding problems have you solved?',
+              area: 'Number of interview-style problems solved',
+              maxPoints: 15,
+              note: 'This measures breadth of exposure to interview-style problems. It should not reward quantity alone, but quantity helps indicate preparation depth when paired with understanding.',
+              options: [
+                { label: '0–25 problems', value: 0 },
+                { label: '26–75 problems', value: 4 },
+                { label: '76–150 problems', value: 8 },
+                { label: '151–300 problems', value: 12 },
+                { label: '300+ problems', value: 15 }
+              ]
+            }
+          ],
+
+          branding: [
+            {
+              id: 'linkedin',
+              label: 'Do you have an optimized LinkedIn profile?',
+              area: 'LinkedIn',
+              maxPoints: 20,
+              note: 'An optimized LinkedIn profile should clearly communicate target role, technical identity, experience, projects, keywords, credibility, and availability.',
+              options: [
+                { label: 'No LinkedIn', value: 0 },
+                { label: 'Basic LinkedIn', value: 5 },
+                { label: 'Updated profile but weak positioning', value: 10 },
+                { label: 'Strong headline, summary, skills, and experience', value: 15 },
+                { label: 'Strong profile with recommendations, projects, activity, and clear positioning', value: 20 }
+              ]
+            },
+            {
+              id: 'resume',
+              label: 'Do you have a polished resume?',
+              area: 'Resume',
+              maxPoints: 20,
+              note: 'A polished resume should be clean, ATS-friendly, impact-based, targeted to the candidate\'s role, and saved as a professional PDF.',
+              options: [
+                { label: 'No resume', value: 0 },
+                { label: 'Basic resume', value: 5 },
+                { label: 'Updated resume', value: 10 },
+                { label: 'Strong impact-based resume', value: 15 },
+                { label: 'Tailored, ATS-tested resume for target roles', value: 20 }
+              ]
+            },
+            {
+              id: 'portfolioWebsite',
+              label: 'Do you have a personal website or portfolio?',
+              area: 'Portfolio website',
+              maxPoints: 20,
+              note: 'A portfolio or personal website gives the candidate an owned platform to present projects, case studies, writing, resume, GitHub, contact details, and positioning.',
+              options: [
+                { label: 'No website or portfolio', value: 0 },
+                { label: 'Basic one-page site', value: 5 },
+                { label: 'Portfolio with projects', value: 10 },
+                { label: 'Portfolio with case studies', value: 15 },
+                { label: 'Strong website with blog, projects, resume, contact, and clear positioning', value: 20 }
+              ]
+            },
+            {
+              id: 'githubPresentation',
+              label: 'Is your GitHub organized and presentable?',
+              area: 'GitHub presentation',
+              maxPoints: 20,
+              note: 'A strong GitHub should have clean repositories, useful READMEs, pinned projects, meaningful commit history, documentation, and code that supports the candidate\'s target role.',
+              options: [
+                { label: 'No GitHub', value: 0 },
+                { label: 'Has repos but messy', value: 5 },
+                { label: 'Some clean repos', value: 10 },
+                { label: 'Good READMEs and pinned projects', value: 15 },
+                { label: 'Strong GitHub with production-level repos, documentation, and contribution history', value: 20 }
+              ]
+            },
+            {
+              id: 'positioningClarity',
+              label: 'Is your positioning consistent across platforms?',
+              area: 'Positioning clarity',
+              maxPoints: 20,
+              note: 'Positioning clarity means the resume, LinkedIn, GitHub, portfolio, bio, and public content all point toward the same professional identity and target market.',
+              options: [
+                { label: 'No consistency', value: 0 },
+                { label: 'Slight consistency', value: 5 },
+                { label: 'Somewhat consistent', value: 10 },
+                { label: 'Mostly consistent', value: 15 },
+                { label: 'Highly consistent, clear, and memorable', value: 20 }
+              ]
+            }
+          ],
+
+          referral: [
+            {
+              id: 'targetCompanyConnections',
+              label: 'Do you know engineers working at your target or desired companies?',
+              area: 'Target-company connections',
+              maxPoints: 25,
+              note: 'Connections at target companies increase access to information, referrals, mentorship, and hiring opportunities.',
+              options: [
+                { label: 'No', value: 0 },
+                { label: '1–2 weak connections', value: 6 },
+                { label: 'Several connections', value: 12 },
+                { label: 'Strong relationships with some', value: 18 },
+                { label: 'Multiple strong relationships inside target companies', value: 25 }
+              ]
+            },
+            {
+              id: 'referralReadiness',
+              label: 'Do you have people who would refer you?',
+              area: 'Referral readiness',
+              maxPoints: 25,
+              note: 'Referral readiness means the candidate has people who understand their value well enough to refer them confidently.',
+              options: [
+                { label: 'No', value: 0 },
+                { label: 'Maybe', value: 6 },
+                { label: '1 person', value: 12 },
+                { label: '2–3 people', value: 18 },
+                { label: '4+ people', value: 25 }
+              ]
+            },
+            {
+              id: 'recommendations',
+              label: 'Do you have written recommendations?',
+              area: 'Recommendations',
+              maxPoints: 25,
+              note: 'Written recommendations improve trust and perceived credibility. These may come from managers, senior engineers, clients, professors, maintainers, mentors, or team leads.',
+              options: [
+                { label: 'None', value: 0 },
+                { label: '1 informal recommendation', value: 6 },
+                { label: '1 written or LinkedIn recommendation', value: 12 },
+                { label: 'Multiple recommendations', value: 18 },
+                { label: 'Recommendations from managers, senior engineers, clients, or maintainers', value: 25 }
+              ]
+            },
+            {
+              id: 'communityStrength',
+              label: 'Are you active in technical communities?',
+              area: 'Community / network strength',
+              maxPoints: 25,
+              note: 'Technical communities can create relationships, referrals, visibility, collaboration, learning, and credibility.',
+              options: [
+                { label: 'No', value: 0 },
+                { label: 'Passive member', value: 6 },
+                { label: 'Occasionally active', value: 12 },
+                { label: 'Regular contributor', value: 18 },
+                { label: 'Known member, organizer, mentor, or community leader', value: 25 }
+              ]
+            }
+          ],
+
+          pr: [
+            {
+              id: 'technicalContent',
+              label: 'Have you published technical content?',
+              area: 'Technical articles / content',
+              maxPoints: 20,
+              note: 'Technical content shows that the candidate can communicate ideas, teach, document thinking, and create public proof around their technical identity.',
+              options: [
+                { label: 'No technical content', value: 0 },
+                { label: '1–2 posts', value: 5 },
+                { label: '3–5 posts', value: 10 },
+                { label: '6–10 posts', value: 15 },
+                { label: '10+ strong technical posts', value: 20 }
+              ]
+            },
+            {
+              id: 'thirdPartyFeatures',
+              label: 'Have you appeared on third-party platforms?',
+              area: 'Third-party features',
+              maxPoints: 20,
+              note: 'Third-party platforms include podcasts, interviews, guest blogs, newsletters, YouTube channels, community features, publications, and other platforms not owned by the candidate.',
+              options: [
+                { label: 'No', value: 0 },
+                { label: 'One minor appearance', value: 5 },
+                { label: 'A few appearances', value: 10 },
+                { label: 'Several relevant appearances', value: 15 },
+                { label: 'Strong third-party credibility', value: 20 }
+              ]
+            },
+            {
+              id: 'speakingInterviews',
+              label: 'Have you spoken publicly about technology?',
+              area: 'Speaking / interviews',
+              maxPoints: 20,
+              note: 'Public speaking shows communication skill, confidence, subject matter credibility, and willingness to contribute to the industry. Examples include meetups, conferences, webinars, workshops, live streams, panels, or events.',
+              options: [
+                { label: 'No', value: 0 },
+                { label: 'Internal presentation only', value: 5 },
+                { label: 'Small meetup or informal talk', value: 10 },
+                { label: 'Webinar, workshop, conference, or event talk', value: 15 },
+                { label: 'Multiple public talks, workshops, or sessions', value: 20 }
+              ]
+            },
+            {
+              id: 'communityRecognition',
+              label: 'Do others mention, share, recommend, or reference your work?',
+              area: 'Community recognition',
+              maxPoints: 20,
+              note: 'Community recognition means other people validate, share, cite, comment on, recommend, or refer to the candidate\'s work.',
+              options: [
+                { label: 'No', value: 0 },
+                { label: 'A few likes or comments', value: 5 },
+                { label: 'Some shares or positive mentions', value: 10 },
+                { label: 'Recognized in a community', value: 15 },
+                { label: 'Regularly referenced, recommended, or shared', value: 20 }
+              ]
+            },
+            {
+              id: 'searchVisibility',
+              label: 'Do you have search visibility?',
+              area: 'Search visibility',
+              maxPoints: 20,
+              note: 'When someone searches your name, do credible results appear? Search visibility means the candidate has a credible public footprint. This can include LinkedIn, GitHub, personal website, articles, talks, interviews, open-source contributions, or third-party mentions.',
+              options: [
+                { label: 'No relevant results', value: 0 },
+                { label: 'Only basic social profiles', value: 5 },
+                { label: 'LinkedIn and personal website appear', value: 10 },
+                { label: 'Multiple relevant results appear', value: 15 },
+                { label: 'Strong search presence with external validation', value: 20 }
+              ]
+            }
+          ]
+        },
+
+        readinessQuestions: [
+          {
+            id: 'interviewSetup',
+            label: 'Do you have a professional interview setup?',
+            note: 'A professional interview setup includes a reliable laptop, good camera, clear audio, stable internet, clean background, and proper lighting.'
+          },
+          {
+            id: 'selfIntroduction',
+            label: 'Can you introduce yourself clearly in 30–60 seconds?',
+            note: 'This measures whether the candidate can clearly explain who they are, what they do, and what value they offer. This connects to the "Misc but Important" section of the framework.'
+          },
+          {
+            id: 'headshot',
+            label: 'Do you have a professional headshot or profile image?',
+            note: 'A professional image improves trust, consistency, and first impression across LinkedIn, portfolio, GitHub, resume, and other public profiles.'
+          },
+          {
+            id: 'salaryRange',
+            label: 'Do you know your target salary range?',
+            note: 'A candidate should know their expected salary range based on role, level, location, company type, and market value.'
+          },
+          {
+            id: 'mobilityAuthorization',
+            label: 'Are your relocation, remote, work authorization, passport, or ID details clear?',
+            note: 'This measures whether the candidate is practically ready to accept opportunities that may require relocation, remote-work clarity, travel, identification, visa information, or work authorization details.'
+          },
+          {
+            id: 'recruiterContact',
+            label: 'Can recruiters easily contact you?',
+            note: 'Recruiters should be able to reach the candidate through clear channels such as email, LinkedIn, portfolio contact form, phone, or calendar link.'
+          },
+          {
+            id: 'targetCompanyList',
+            label: 'Do you have a target company list?',
+            note: 'A target company list shows that the candidate is not applying randomly. It should include desired companies, company type, priority level, and target roles.'
+          }
+        ],
+
+        pillarMeta: [
+          { key: 'technicalValue', name: 'Technical Value', weight: 0.25 },
+          { key: 'interviewReadiness', name: 'Interview Readiness', weight: 0.20 },
+          { key: 'branding', name: 'Branding', weight: 0.15 },
+          { key: 'referralRecommendation', name: 'Referral / Recommendation', weight: 0.15 },
+          { key: 'prVisibility', name: 'PR / Visibility', weight: 0.10 },
+          { key: 'professionalReadiness', name: 'Professional Readiness', weight: 0.15 }
+        ],
+
+        tierDescriptions: {
+          'Elite Candidate': 'The candidate is highly positioned and ready to target elite companies. They likely need focused outreach, referrals, and strong interview execution.',
+          'Strong Candidate': 'The candidate has a strong foundation but may need better visibility, stronger referrals, or sharper interview readiness.',
+          'Competitive but Incomplete': 'The candidate has real potential but is missing important pieces in proof, presentation, network, or interview readiness.',
+          'Underpositioned Candidate': 'The candidate may have ability, but their market positioning, proof, or readiness is not strong enough yet.',
+          'Foundation Stage': 'The candidate needs structured development before seriously targeting elite companies.'
+        },
+
+        recommendations: {
+          technicalValue: 'Focus on building stronger proof of engineering ability. Add one production-quality project, document it clearly, and attach measurable results such as users, performance, automation, revenue, reliability, or cost savings.',
+          interviewReadiness: 'Focus on interview execution. Create a 30-day plan for DSA practice, system design practice, mock interviews, and technical communication under pressure.',
+          branding: 'Focus on packaging. Improve your resume, LinkedIn, GitHub, portfolio, and positioning so your target role and technical value are clear within seconds.',
+          referralRecommendation: 'Focus on access. Build relationships with engineers, recruiters, alumni, open-source maintainers, and people at target companies before asking for referrals.',
+          prVisibility: 'Focus on visibility. Publish technical content, share project breakdowns, join public technical discussions, and create proof outside your own resume and portfolio.',
+          professionalReadiness: 'Focus on professional readiness. Improve your interview setup, self-introduction, profile image, salary clarity, recruiter contactability, work authorization clarity, and target company list.'
+        },
+
+        get currentStepData() {
+          return this.steps[this.currentStep - 1];
+        },
+
+        get currentQuestions() {
+          return this.questions[this.currentStepData.section] || [];
+        },
+
+        get currentSectionState() {
+          return this[this.currentStepData.section] || {};
+        },
+
+        get currentSectionScore() {
+          if (this.currentStepData.section === 'readiness') return this.yesNoScore(this.readiness);
+          return this.sumScore(this.currentSectionState);
+        },
+
+        get targetMarketDisplay() {
+          return this.identity.targetMarket.length ? this.identity.targetMarket.join(', ') : 'Not specified';
+        },
+
+        sumScore(sectionObject) {
+          return Object.values(sectionObject)
+            .map(Number)
+            .reduce((sum, value) => sum + value, 0);
+        },
+
+        yesNoScore(sectionObject) {
+          const values = Object.values(sectionObject);
+          const yesCount = values.filter(Boolean).length;
+
+          if (!values.length) return 0;
+
+          return Math.round((yesCount / values.length) * 100);
+        },
+
+        get pillarScores() {
+          return {
+            technicalValue: this.sumScore(this.technical),
+            interviewReadiness: this.sumScore(this.interview),
+            branding: this.sumScore(this.branding),
+            referralRecommendation: this.sumScore(this.referral),
+            prVisibility: this.sumScore(this.pr),
+            professionalReadiness: this.yesNoScore(this.readiness)
+          };
+        },
+
+        get weightedContributions() {
+          const scores = this.pillarScores;
+
+          return {
+            technicalValue: scores.technicalValue * this.weights.technicalValue,
+            interviewReadiness: scores.interviewReadiness * this.weights.interviewReadiness,
+            branding: scores.branding * this.weights.branding,
+            referralRecommendation: scores.referralRecommendation * this.weights.referralRecommendation,
+            prVisibility: scores.prVisibility * this.weights.prVisibility,
+            professionalReadiness: scores.professionalReadiness * this.weights.professionalReadiness
+          };
+        },
+
+        get finalScore() {
+          const total = Object.values(this.weightedContributions)
+            .reduce((sum, value) => sum + value, 0);
+
+          return Math.round(total);
+        },
+
+        get tier() {
+          const score = this.finalScore;
+
+          if (score >= 90) return 'Elite Candidate';
+          if (score >= 75) return 'Strong Candidate';
+          if (score >= 60) return 'Competitive but Incomplete';
+          if (score >= 40) return 'Underpositioned Candidate';
+          return 'Foundation Stage';
+        },
+
+        get tierDescription() {
+          return this.tierDescriptions[this.tier];
+        },
+
+        get pillarBreakdown() {
+          const scores = this.pillarScores;
+          const contributions = this.weightedContributions;
+
+          return this.pillarMeta.map((pillar) => ({
+            ...pillar,
+            score: scores[pillar.key],
+            contribution: contributions[pillar.key]
+          }));
+        },
+
+        get strongestPillar() {
+          return this.pillarBreakdown.reduce((strongest, pillar) => (
+            pillar.score > strongest.score ? pillar : strongest
+          ), this.pillarBreakdown[0]);
+        },
+
+        get weakestPillar() {
+          return this.pillarBreakdown.reduce((weakest, pillar) => (
+            pillar.score < weakest.score ? pillar : weakest
+          ), this.pillarBreakdown[0]);
+        },
+
+        get recommendation() {
+          return this.recommendations[this.weakestPillar.key];
+        },
+
+        validateIdentity() {
+          if (!this.identity.name || !this.identity.targetRole || !this.identity.targetLevel) {
+            this.identityError = 'Full Name, Target Role, and Target Level are required.';
+            return false;
+          }
+
+          this.identityError = '';
+          return true;
+        },
+
+        nextStep() {
+          if (this.currentStep === 1 && !this.validateIdentity()) return;
+          if (this.currentStep < this.steps.length) this.currentStep += 1;
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        },
+
+        previousStep() {
+          if (this.currentStep > 1) this.currentStep -= 1;
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        },
+
+        interpretScore(score) {
+          if (score >= 85) return 'Strong and competitive.';
+          if (score >= 70) return 'Good foundation with room to improve.';
+          if (score >= 50) return 'Developing, but incomplete.';
+          return 'Needs focused improvement.';
+        },
+
+        formatContribution(value) {
+          return Number.isInteger(value) ? value.toString() : value.toFixed(1);
+        }
+      };
+    }
+  </script>
+</body>
+</html>

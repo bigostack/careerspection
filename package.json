@@ -1,0 +1,16 @@
+{
+  "name": "careerspection",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "tw:watch": "tailwindcss -i ./assets/css/input.css -o ./assets/css/style.css --watch",
+    "tw:build": "tailwindcss -i ./assets/css/input.css -o ./assets/css/style.css"
+  },
+  "author": "Bigostack",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@tailwindcss/cli": "^4.3.0",
+    "tailwindcss": "^4.3.0"
+  }
+}
